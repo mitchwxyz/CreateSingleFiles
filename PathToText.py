@@ -26,6 +26,7 @@ class Path2File:
         included_file_types=None,
         excluded_file_types=None,
         excluded_folders=None,
+        map_only=False,
     ):
         self.input_folder = Path(input_folder)
         self.output_path = output_file_path
@@ -34,6 +35,7 @@ class Path2File:
             excluded_file_types or self.STANDARD_EXCLUDED_FILE_TYPES
         )
         self.excluded_folders = excluded_folders or self.STANDARD_EXCLUDED_FILE_PATHS
+        self.map_only = map_only
         self.ignored_patterns = []
         self.md = MarkItDown()
 
@@ -46,9 +48,10 @@ class Path2File:
         return Path(self.output_path)
 
     def fetch_all_files(self):
-        """
-        Fetch files from the input folder based on inclusion/exclusion criteria and .gitignore patterns.
-        """
+        """Fetch files from the input folder based on inclusion/exclusion criteria and .gitignore patterns."""
+        if self.map_only:
+            return []
+
         self._read_gitignore()
         files_data = []
 
@@ -75,18 +78,17 @@ class Path2File:
         return files_data
 
     def write_to_file(self, files_data) -> bool:
-        """
-        Write the collected file contents to the output file.
-        """
-        if not files_data:
+        """Write the collected file contents to the output file."""
+        if not files_data and not self.map_only:
             print("No Files in this Directory. Done.")
             return False
         with self.output_file.open("w", encoding="utf-8") as f:
             f.write("# Folder Structure\n")
             f.write(f"```\n{self._map_directory_structure()}\n```")
-            f.write("\n\n# File Contents\n")
-            for file_data in files_data:
-                f.write(file_data)
+            if files_data:
+                f.write("\n\n# File Contents\n")
+                for file_data in files_data:
+                    f.write(file_data)
         return True
 
     def clean_up_text(self):
@@ -194,15 +196,27 @@ def main():
         help=f"Path and filename for the output file. Defaults to {Path2File.DEFAULT_FILE_NAME}",
     )
     parser.add_argument(
-        "--exclude_types", nargs="+", help="file types to exclude (Ex: .svg .png)"
+        "--exclude_types",
+        type=str,
+        nargs="+",
+        help="file types to exclude (Ex: .svg .png)",
     )
     parser.add_argument(
-        "--include_types", nargs="+", help="file types to include (Ex: .txt .py)"
+        "--include_types",
+        type=str,
+        nargs="+",
+        help="file types to include (Ex: .txt .py)",
     )
     parser.add_argument(
         "--exclude_folders",
+        type=str,
         nargs="+",
         help="folders to exclude from processing (Ex: .git .venv)",
+    )
+    parser.add_argument(
+        "--map_only",
+        action="store_true",
+        help="output the file structure only, no file contents.",
     )
 
     args = parser.parse_args()
@@ -214,6 +228,7 @@ def main():
         excluded_file_types=args.exclude_types,
         included_file_types=args.include_types,
         excluded_folders=args.exclude_folders,
+        map_only=args.map_only,
     )
 
     print("Fetching all files...")
