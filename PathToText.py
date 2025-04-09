@@ -9,18 +9,18 @@ class Path2File:
     """A class for processing files in a folder, including fetching, writing, and cleaning up content."""
 
     DEFAULT_FILE_NAME = "Merged.md"
-    STANDARD_EXCLUDED_FILE_TYPES = [
+    STANDARD_EXCLUDED_FILE_TYPES = (
         ".DS_Store",
         ".gitignore",
         ".lock",
         DEFAULT_FILE_NAME,
-    ]
-    STANDARD_EXCLUDED_FILE_PATHS = [
+    )
+    STANDARD_EXCLUDED_PATHS = (
         ".git",
         ".venv",
         "__pycache__",
         ".ruff_cache",
-    ]
+    )
 
     def __init__(
         self,
@@ -31,19 +31,36 @@ class Path2File:
         excluded_folders,
         map_only=False,
     ):
+        """Initialize Path2File with input/output paths and file filtering options.
+
+        Args:
+            input_folder: Path to folder containing source files
+            output_file_path: Path where output file will be written
+            included_file_types: List of file extensions to include
+            excluded_file_types: List of file extensions to exclude
+            excluded_folders: List of folder names to exclude
+            map_only: If True, only output directory structure
+
+        """
         self.input_folder = Path(input_folder)
         self.output_path = output_file_path
         self.included_file_types = included_file_types
         self.excluded_file_types = (
-            self.STANDARD_EXCLUDED_FILE_TYPES + excluded_file_types
+            list(self.STANDARD_EXCLUDED_FILE_TYPES) + excluded_file_types
         )
-        self.excluded_folders = self.STANDARD_EXCLUDED_FILE_PATHS + excluded_folders
+        self.excluded_folders = list(self.STANDARD_EXCLUDED_PATHS) + excluded_folders
         self.map_only = map_only
         self.ignored_patterns = []
         self.md = MarkItDown()
 
     @property
     def output_file(self) -> Path:
+        """Get the path of the output file.
+
+        Returns:
+            Path: Path object for the output file location
+
+        """
         if not self.output_path:
             return self.input_folder / self.DEFAULT_FILE_NAME
         elif Path(self.output_path).is_dir():
@@ -58,15 +75,15 @@ class Path2File:
         self._read_gitignore()
         files_data = []
 
-        for root, dirs, files in Path(self.input_folder).walk():
+        for root, directories, files in Path(self.input_folder).walk():
             root_path = Path(root)
 
             # Filter out ignored directories and standard excluded paths
-            dirs[:] = [
-                d
-                for d in dirs
-                if not self._is_ignored(root_path / d)
-                and d not in self.excluded_folders
+            directories[:] = [
+                dir
+                for dir in directories
+                if not self._is_ignored(root_path / dir)
+                and dir not in self.excluded_folders
             ]
             for file in files:
                 file_path = root_path / file
@@ -154,6 +171,13 @@ class Path2File:
         return f"## {relative_path}\n```{file_extension[1:]}\n{file_content}\n```\n\n"
 
     def _map_directory_structure(self) -> str:
+        """Create a text representation of the directory structure.
+
+        Returns:
+            str: Text representation of directory tree
+
+        """
+
         def recursive_list(dir_path: Path, prefix=""):
             try:
                 entries = [entry for entry in dir_path.iterdir()]
@@ -181,6 +205,12 @@ class Path2File:
 
 
 def main():
+    """Process files in a directory and output contents to a single markdown file.
+
+    Returns:
+        Path: Path to the generated output file, or None if no files were processed
+
+    """
     parser = argparse.ArgumentParser(
         description="Scrape files from a folder and write to a text file"
     )
