@@ -6,9 +6,7 @@ from markitdown import MarkItDown
 
 
 class Path2File:
-    """
-    A class for processing files in a folder, including fetching, writing, and cleaning up content.
-    """
+    """A class for processing files in a folder, including fetching, writing, and cleaning up content."""
 
     DEFAULT_FILE_NAME = "Merged.md"
     STANDARD_EXCLUDED_FILE_TYPES = [
@@ -17,24 +15,29 @@ class Path2File:
         ".lock",
         DEFAULT_FILE_NAME,
     ]
-    STANDARD_EXCLUDED_FILE_PATHS = [".git", ".venv", "__pycache__", ".ruff_cache"]
+    STANDARD_EXCLUDED_FILE_PATHS = [
+        ".git",
+        ".venv",
+        "__pycache__",
+        ".ruff_cache",
+    ]
 
     def __init__(
         self,
         input_folder,
-        output_file_path=None,
-        included_file_types=None,
-        excluded_file_types=None,
-        excluded_folders=None,
+        output_file_path,
+        included_file_types,
+        excluded_file_types,
+        excluded_folders,
         map_only=False,
     ):
         self.input_folder = Path(input_folder)
         self.output_path = output_file_path
-        self.included_file_types = included_file_types or []
+        self.included_file_types = included_file_types
         self.excluded_file_types = (
-            excluded_file_types or self.STANDARD_EXCLUDED_FILE_TYPES
+            self.STANDARD_EXCLUDED_FILE_TYPES + excluded_file_types
         )
-        self.excluded_folders = excluded_folders or self.STANDARD_EXCLUDED_FILE_PATHS
+        self.excluded_folders = self.STANDARD_EXCLUDED_FILE_PATHS + excluded_folders
         self.map_only = map_only
         self.ignored_patterns = []
         self.md = MarkItDown()
@@ -92,9 +95,7 @@ class Path2File:
         return True
 
     def clean_up_text(self):
-        """
-        Clean up the output file by removing excessive newlines.
-        """
+        """Clean up the output file by removing excessive newlines."""
         with self.output_file.open(encoding="utf-8") as f:
             text = f.read()
         cleaned_text = re.sub("\n{3,}", "\n\n", text)
@@ -102,9 +103,7 @@ class Path2File:
             f.write(cleaned_text)
 
     def _read_gitignore(self):
-        """
-        Read patterns from the .gitignore file if it exists.
-        """
+        """Read patterns from the .gitignore file if it exists."""
         gitignore_path = self.input_folder / ".gitignore"
         if gitignore_path.exists():
             with gitignore_path.open(encoding="utf-8") as gitignore_file:
@@ -115,9 +114,7 @@ class Path2File:
                 ]
 
     def _is_ignored(self, path):
-        """
-        Check if a file or directory matches any .gitignore pattern or should be excluded.
-        """
+        """Check if a file or directory matches any .gitignore pattern or should be excluded."""
         relative_path = path.relative_to(self.input_folder)
         return any(
             re.fullmatch(pattern.replace("*", ".*"), str(relative_path))
@@ -125,9 +122,7 @@ class Path2File:
         )
 
     def _file_matches_criteria(self, file_name):
-        """
-        Check if the given file matches inclusion and exclusion criteria.
-        """
+        """Check if the given file matches inclusion and exclusion criteria."""
         return (
             not self.excluded_file_types
             or not any(file_name.endswith(ext) for ext in self.excluded_file_types)
@@ -137,9 +132,7 @@ class Path2File:
         )
 
     def _process_file(self, file_path):
-        """
-        Process the given file and return its content.
-        """
+        """Process the given file and return its content."""
         relative_path = file_path.relative_to(self.input_folder)
         file_extension = file_path.suffix
         file_content = ""
@@ -169,8 +162,9 @@ class Path2File:
 
             # Filter out excluded folders and hidden files
             entries = [
-                entry for entry in entries
-                if entry.name not in self.STANDARD_EXCLUDED_FILE_PATHS + self.STANDARD_EXCLUDED_FILE_TYPES
+                entry
+                for entry in entries
+                if entry.name not in self.excluded_folders + self.excluded_file_types
             ]
             entries.sort(key=lambda x: (not x.is_dir(), x.name))
 
@@ -183,7 +177,7 @@ class Path2File:
                     extension = "    " if is_last else "│   "
                     yield from recursive_list(entry, prefix=prefix + extension)
 
-        return '\n'.join(recursive_list(self.input_folder))
+        return "\n".join(recursive_list(self.input_folder))
 
 
 def main():
@@ -192,24 +186,26 @@ def main():
     )
     parser.add_argument("directory", help="Path to the folder to process")
     parser.add_argument(
-        "--output",
+        "--output_name",
+        type=str,
+        nargs="?",
         help=f"Path and filename for the output file. Defaults to {Path2File.DEFAULT_FILE_NAME}",
     )
     parser.add_argument(
         "--exclude_types",
-        type=str,
+        default=[],
         nargs="+",
         help="file types to exclude (Ex: .svg .png)",
     )
     parser.add_argument(
         "--include_types",
-        type=str,
+        default=[],
         nargs="+",
         help="file types to include (Ex: .txt .py)",
     )
     parser.add_argument(
         "--exclude_folders",
-        type=str,
+        default=[],
         nargs="+",
         help="folders to exclude from processing (Ex: .git .venv)",
     )
@@ -220,7 +216,9 @@ def main():
     )
 
     args = parser.parse_args()
-    output_file_path = args.output or Path(args.directory) / Path2File.DEFAULT_FILE_NAME
+    output_file_path = Path(args.directory) / (
+        args.output_name or Path2File.DEFAULT_FILE_NAME
+    )
 
     processor = Path2File(
         input_folder=args.directory,
@@ -247,4 +245,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    print(main())
